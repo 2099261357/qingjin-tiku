@@ -16,6 +16,16 @@ uploads/
 *.db
 *.sqlite
 
+# 试卷收件箱里的原始试卷（只保留 README.txt）
+papers_inbox/*.pdf
+papers_inbox/*.doc
+papers_inbox/*.docx
+papers_inbox/*.png
+papers_inbox/*.jpg
+papers_inbox/*.jpeg
+papers_inbox/*.webp
+papers_inbox/*.bmp
+
 # 系统与编辑器
 .DS_Store
 Thumbs.db

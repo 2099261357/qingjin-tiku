@@ -71,6 +71,21 @@ exam-ai-tutor/
 - 想增加试卷：把试卷文字追加到 `papers.txt`（`#` 开头的行是注释）。
 - 获取试卷文字的方法：用本网站的「拍照识别」逐页识别，复制结果粘贴进去。
 
+### 定期更新试卷库（推荐）
+
+项目自带**试卷库维护工具**，以后拿到新试卷可以一条命令自动入库：
+
+1. 把新试卷（PDF / 图片）放进 `papers_inbox/` 文件夹
+2. 运行：
+   ```bash
+   pip install pymupdf rapidocr_onnxruntime   # 首次使用装一次
+   python tools/add_papers.py
+   ```
+   工具会自动 OCR、按文件名去重，追加到 `static/papers.txt`
+3. 重新打包 `static/` 并部署到 Netlify，网站就会参考新试卷
+
+> 细节见 `papers_inbox/README.txt`。也可以直接把试卷发给我，我帮你识别更新。
+
 ## 部署上线（随时随地可访问）
 
 本项目是**纯静态网站**，不需要后端、不需要服务器，用 Netlify 免费拖拽部署即可（约 1 分钟）：
