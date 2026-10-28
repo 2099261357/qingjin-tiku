@@ -76,13 +76,13 @@ exam-ai-tutor/
 项目自带**试卷库维护工具**，以后拿到新试卷可以一条命令自动入库：
 
 1. 把新试卷（PDF / 图片）放进 `papers_inbox/` 文件夹
-2. 运行：
+2. **双击项目根目录的 `更新试卷库.bat`**（最省事），或运行：
    ```bash
    pip install pymupdf rapidocr_onnxruntime   # 首次使用装一次
    python tools/add_papers.py
    ```
    工具会自动 OCR、按文件名去重，追加到 `static/papers.txt`
-3. 重新打包 `static/` 并部署到 Netlify，网站就会参考新试卷
+3. 把 `static/` 文件夹拖到 Netlify 重新部署，网站就会参考新试卷
 
 > 细节见 `papers_inbox/README.txt`。也可以直接把试卷发给我，我帮你识别更新。
 
