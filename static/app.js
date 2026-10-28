@@ -657,30 +657,6 @@
       this.textContent = show ? "隐藏" : "显示";
     });
 
-    // 留言反馈
-    $("fbSubmit").addEventListener("click", function () {
-      var content = $("fbContent").value.trim();
-      if (!content) { toast("留言内容不能为空", true); return; }
-      var nick = $("fbNick").value.trim();
-      this.disabled = true;
-      fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ nickname: nick, content: content }),
-      })
-        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
-        .then(function (res) {
-          if (!res.ok) throw new Error((res.d && res.d.error && res.d.error.message) || "提交失败");
-          $("fbContent").value = "";
-          $("fbNick").value = "";
-          toast("已提交，感谢反馈！");
-          loadFeedback();
-        })
-        .catch(function (e) { toast(e.message || "提交失败", true); })
-        .finally(function () { $("fbSubmit").disabled = false; });
-    });
-    $("fbRefresh").addEventListener("click", loadFeedback);
-
     // 继续追问：给每个解答区加「追问」按钮
     document.querySelectorAll(".output-head").forEach(function (head) {
       var copy = head.querySelector("button");
@@ -703,7 +679,6 @@
     // 初始载入配置
     loadSettings();
     loadPapers();
-    loadFeedback();
 
     // 首次使用（没填 Key）：自动打开「使用说明」，引导新手
     if (!getConfig().key && !SITE.textKey) {

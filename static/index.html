@@ -43,7 +43,6 @@
       <button class="tab" data-tab="variant" role="tab">举一反三</button>
       <button class="tab" data-tab="deep" role="tab">深度思考</button>
       <button class="tab" data-tab="exam" role="tab">出模拟卷</button>
-      <button class="tab" data-tab="feedback" role="tab">留言反馈</button>
       <button class="tab" data-tab="guide" role="tab">使用说明</button>
     </nav>
 
@@ -261,31 +260,6 @@
       </div>
     </section>
 
-    <!-- ============ 留言反馈 ============ -->
-    <section id="panel-feedback" class="panel" role="tabpanel">
-      <div class="panel-head">
-        <h3>留言反馈</h3>
-        <p class="panel-desc">有任何建议、报错，或想补充的科目，都可以写在这里。</p>
-      </div>
-      <div class="work-grid">
-        <div class="card">
-          <label class="field-label" for="fbNick">昵称（可选）</label>
-          <input type="text" id="fbNick" placeholder="匿名" maxlength="50" />
-          <label class="field-label" for="fbContent">留言内容</label>
-          <textarea id="fbContent" rows="6" placeholder="例如：希望增加「线性代数」科目；某道题的解答有误……"></textarea>
-          <button class="btn primary" id="fbSubmit">提交留言</button>
-          <p class="field-hint">留言会公开显示在右侧，请勿填写隐私信息。</p>
-        </div>
-        <div class="card output-card">
-          <div class="output-head">
-            <span>最新留言</span>
-            <button class="btn ghost sm" id="fbRefresh">刷新</button>
-          </div>
-          <div class="output" id="fbList"><p class="placeholder">暂无留言。</p></div>
-        </div>
-      </div>
-    </section>
-
     <!-- ============ 使用说明 ============ -->
     <section id="panel-guide" class="panel" role="tabpanel">
       <div class="panel-head">
@@ -319,6 +293,9 @@
             <li><strong>AI 会算错吗？</strong>可能会。重要题目请自己再核对一遍。</li>
             <li><strong>要花多少钱？</strong>按量付费，10 元能用很久；用你自己的账户扣费。</li>
           </ul>
+
+          <h4 class="guide-title">反馈 / 联系</h4>
+          <p class="guide-note">有任何建议、报错，或想补充科目，欢迎发邮件到 <a href="mailto:2099261357@qq.com">2099261357@qq.com</a>。</p>
         </div>
 
         <!-- 右侧：配置 -->
