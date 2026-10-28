@@ -704,6 +704,12 @@
     loadSettings();
     loadPapers();
     loadFeedback();
+
+    // 首次使用（没填 Key）：自动打开「使用说明」，引导新手
+    if (!getConfig().key && !SITE.textKey) {
+      var guideTab = document.querySelector('.tab[data-tab="guide"]');
+      if (guideTab) guideTab.click();
+    }
   }
 
   function loadSettings() {

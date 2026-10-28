@@ -296,22 +296,28 @@
       <div class="guide-grid">
         <!-- 左侧：教程 -->
         <div class="card guide-card">
-          <h4 class="guide-title">① 如何获取 API Key（含充值步骤）</h4>
+          <h4 class="guide-title">这个网站是干嘛的？</h4>
+          <p class="guide-note">一个学高数 / 大物的 AI 助手：<strong>拍照识题、分步解答、举一反三、出模拟卷</strong>，还能继续追问。</p>
+
+          <h4 class="guide-title">为什么一定要填 Key？</h4>
+          <p class="guide-note">本网站<strong>自己不提供 AI</strong>，只是帮你调用 DeepSeek。所以需要你填一个<strong>自己的 DeepSeek Key</strong>（相当于一张"通行证"），AI 的费用从你自己的 DeepSeek 账户扣——<strong>几块钱够用很久</strong>。</p>
+          <p class="guide-note">💡 <strong>还没有 Key？先不填也能用「演示模式」看看效果</strong>（不联网、不花钱），觉得好用再去申请。</p>
+
+          <h4 class="guide-title">获取 Key（3 分钟，照做就行）</h4>
           <ol class="steps">
-            <li><strong>注册</strong>：打开 <a href="https://platform.deepseek.com" target="_blank" rel="noopener">DeepSeek 开放平台</a>，用手机号或微信注册 / 登录。</li>
-            <li><strong>充值</strong>：进入「充值」页面，选择金额完成支付。按量计费，<em>先充 10 元即可使用很久</em>。</li>
-            <li><strong>创建 Key</strong>：进入「API Keys」→「创建 API Key」，起个名字，复制生成的一串 <code>sk-…</code>。</li>
-            <li><strong>填入本页</strong>：把 <code>sk-…</code> 粘贴到右侧「你的配置」的 API Key 输入框，点击「保存」。</li>
-            <li><strong>选择模型</strong>：默认 <code>deepseek-chat</code>（快、便宜）；难题可切换 <code>deepseek-reasoner</code>（推理更强、更慢更贵）。</li>
+            <li><strong>注册</strong>：打开 <a href="https://platform.deepseek.com" target="_blank" rel="noopener">DeepSeek 开放平台</a>，用手机号或微信注册。</li>
+            <li><strong>充值</strong>：点「充值」，充 <em>10 元</em>就够用很久。</li>
+            <li><strong>创建 Key</strong>：点「API Keys」→「创建 API Key」，复制那串 <code>sk-…</code>。</li>
+            <li><strong>粘贴到这里</strong>：把 <code>sk-…</code> 粘到右边「你的配置」，点「保存」。</li>
           </ol>
+          <a class="btn primary" href="https://platform.deepseek.com" target="_blank" rel="noopener" style="display:inline-block;width:auto;margin-top:12px;">去申请 DeepSeek Key →</a>
 
-          <h4 class="guide-title">② 风格参考（让变式题/试卷更贴学校风格）</h4>
-          <p class="guide-note">在右侧「风格参考」里粘贴几道你们学校的往年真题，生成变式题和模拟卷时 AI 会模仿其风格与难度，但不会照抄原题。</p>
-
-          <h4 class="guide-title">③ 隐私与安全</h4>
+          <h4 class="guide-title">常见问题</h4>
           <ul class="bullets">
-            <li>你的 API Key <strong>只保存在你自己的浏览器</strong>（localStorage）里，不会上传到本网站服务器；本网站仅转发请求、不记录 Key。</li>
-            <li>请勿把 Key 分享给他人；若泄露，请到平台「API Keys」删除并重建。</li>
+            <li><strong>Key 会丢吗？</strong>不会。存在你浏览器本地，关掉再打开还在。</li>
+            <li><strong>别人能用我的 Key 吗？</strong>不能。只存在你自己的手机上。</li>
+            <li><strong>AI 会算错吗？</strong>可能会。重要题目请自己再核对一遍。</li>
+            <li><strong>要花多少钱？</strong>按量付费，10 元能用很久；用你自己的账户扣费。</li>
           </ul>
         </div>
 
@@ -326,6 +332,7 @@
               <button class="btn ghost sm" id="toggleKey" type="button">显示</button>
             </div>
             <p class="field-hint" id="keyHint">尚未设置 Key，当前为「演示模式」（不联网、不花钱）。</p>
+            <p class="field-hint">还没有 Key？<a href="https://platform.deepseek.com" target="_blank" rel="noopener">点这里去申请</a>（免费注册，充 10 元够用很久）。</p>
           </div>
 
           <div class="row-2">
