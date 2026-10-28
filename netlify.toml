@@ -1,0 +1,19 @@
+# 青衿题库 · Netlify 部署配置
+# 前端静态文件在 static/ 目录；服务端函数在 netlify/functions/ 目录。
+
+[build]
+  publish = "static"
+
+[functions]
+  directory = "netlify/functions"
+
+# /api/* 转发到 Netlify 函数；其余路径交给单页应用（index.html）
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
