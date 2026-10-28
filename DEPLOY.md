@@ -1,92 +1,71 @@
-# 部署到 Vercel（免费 · 随时随地可访问）
+# 部署到 Netlify（免费 · 1 分钟 · 随时随地访问）
 
-这篇教程带你把这个网站免费部署到公网，得到固定网址（如 `https://你的项目.vercel.app`），任何网络都能打开。全程约 20 分钟，只需注册 3 个免费账号。
-
----
-
-## 需要准备的免费账号
-
-| 平台 | 用途 | 费用 |
-|------|------|------|
-| [GitHub](https://github.com) | 存放代码 | 免费 |
-| [Vercel](https://vercel.com) | 托管网站 | 免费 |
-| [Upstash](https://upstash.com) | 存留言（Redis） | 免费版够用 |
-
-> 提示：全程可用 GitHub 账号「一键登录」Vercel 和 Upstash，减少注册步骤。
+本项目是**纯静态网站**：不需要后端、不需要数据库、不需要 GitHub。
+把 `static` 文件夹拖到 Netlify 就能上线，得到固定网址，任何网络都能打开。
 
 ---
 
-## 第一步：把代码推到 GitHub
+## 第 1 步：准备文件
 
-1. 打开 GitHub → 右上角「+」→「New repository」，仓库名随意（如 `qingjin-tiku`），设为 **Public** 或 Private 均可，点「Create」。
-2. 在你自己电脑上，进入本项目目录，在终端执行：
+把项目里的 **`static` 文件夹**准备好（里面有 `index.html`、`app.js`、`papers.txt` 等）。
 
-   ```bash
-   cd exam-ai-tutor
-   git init
-   git add .
-   git commit -m "first commit"
-   git branch -M main
-   git remote add origin https://github.com/你的用户名/qingjin-tiku.git
-   git push -u origin main
+> 如果你拿到的是别人打包好的 `qingjin-tiku-site.zip`，直接用它也行（Netlify 支持拖 zip）。
+
+---
+
+## 第 2 步：拖到 Netlify
+
+1. 打开 **https://app.netlify.com/drop**
+2. 把 **`static` 文件夹**（或 `qingjin-tiku-site.zip`）**直接拖进**网页中间的大虚线框
+3. 等几十秒，Netlify 会给你一个网址，形如：
    ```
+   https://xxxx-xxxx.netlify.app
+   ```
+4. 这就是你的网站，打开即可。
 
-   > 还没装 Git 的话，先到 <https://git-scm.com> 下载安装。
-
----
-
-## 第二步：Vercel 连接仓库自动部署
-
-1. 打开 [vercel.com](https://vercel.com)，点「Sign Up」，选择 **Continue with GitHub** 授权登录。
-2. 登录后点 **「Add New」→「Project」**，选择你刚建的 `qingjin-tiku` 仓库，点 **「Import」**。
-3. Vercel 会自动识别（本项目无需构建命令），直接点 **「Deploy」**。
-4. 等待几十秒，出现 🎉 即部署完成，点 **「Visit」** 就能打开你的网站，网址形如 `https://qingjin-tiku-xxxx.vercel.app`。
-
-> 以后你 `git push` 新代码，Vercel 会**自动重新部署**，无需手动操作。
+> 免费、自动 HTTPS、固定网址。注册（用邮箱或 GitHub 登录）后网址永久保留。
 
 ---
 
-## 第三步：配置留言功能（Upstash Redis）
+## 第 3 步：开始使用
 
-留言功能需要云存储，用 Upstash 免费版：
+网站不需要任何登录，每个使用者**自己填一个 DeepSeek Key** 即可：
 
-1. 打开 [upstash.com](https://upstash.com)，用 GitHub 登录。
-2. 进入 **Console → Create Database**，Region 任选（离你近即可），创建好后进入数据库详情页。
-3. 在 **REST API** 一栏复制两样东西：
-   - `UPSTASH_REDIS_REST_URL`（形如 `https://xxxx.upstash.io`）
-   - `UPSTASH_REDIS_REST_TOKEN`
-4. 回到 Vercel → 你的项目 → **Settings → Environment Variables**，添加上面两个变量，**Deployment 选 Production**，点 Save。
-5. 回到 **Deployments**，点右上角「⋯」→ **Redeploy**（让环境变量生效）。
+1. 打开你的 `https://xxx.netlify.app`
+2. 点「使用说明」→「API Key」→ 粘贴 DeepSeek 的 `sk-…` → 保存
+3. 回「拍照识别」上传题目，或「出模拟卷」直接生成
 
-> 不配置也能用，只是「留言反馈」页会显示为空、提交会提示未配置。
+> 拍照识别和解题都用这个 DeepSeek Key（识图用 `deepseek-flash`，解题用 `deepseek-chat`），
+> 不需要再配置视觉模型。
 
 ---
 
-## 第四步：开始使用（重要）
+## 更新网站
 
-网站上线后，**每个用户需要自己填 API Key**（BYOK），网站本身不出 AI 费用：
+1. 打开你的 Netlify 站点 → **Deploys**
+2. 找 **「Deploy manually」**（或页面上的 **「Already built it? Drop a folder, .zip...」** 虚线框）
+3. 把新的 `static` 文件夹 / 新 zip 拖进去
+4. 等部署完成，网址不变，内容已更新
 
-1. 打开你的 `xxx.vercel.app`。
-2. 点「使用说明」：
-   - **API Key**：填 DeepSeek 的 `sk-…`（用于解题、举一反三、出卷、深度思考）。
-   - **视觉模型**：填一个支持图片的模型，用于「拍照识别」。
-     - 推荐 **智谱 GLM-4V-Flash（免费）**：地址 `https://open.bigmodel.cn/api/paas/v4`，模型 `glm-4v-flash`，Key 填智谱的 key（注册即免费用）。
-     - 或 **通义千问 Qwen-VL**：地址 `https://dashscope.aliyuncs.com/compatible-mode/v1`，模型 `qwen-vl-plus`，Key 填通义千问的 key。
-     - （DeepSeek 标准 API 不支持图片，所以识别需要单独配一个视觉模型。）
-3. 点「保存」，即可拍照识别、解题、出卷。
+> 手机/浏览器若还是旧页面，按 **Ctrl + F5** 强制刷新（或清一下网站缓存）。
 
 ---
 
 ## 常见问题
 
-- **拍照识别没反应？** 检查「使用说明」里的视觉模型是否已配置（DeepSeek 不支持图片）。
-- **留言提交失败？** 检查 Vercel 环境变量是否填对、是否 Redeploy 过。
-- **想用自定义域名？** Vercel → Settings → Domains 添加你自己的域名（需另购域名）。
-- **担心 AI 费用？** 各人自带 Key，费用各人自理，你作为部署者不承担他人费用。
+- **拍照识别报错 / 没反应？** 确认填的是 **DeepSeek** 的 Key（不是别的平台的）。
+- **识别很慢？** 视觉模型 + 网络延迟，第一次可能慢几秒，属正常。
+- **想换自定义域名？** Netlify → Domain management，绑定自己的域名。
+- **担心 AI 费用？** 各人自带 Key、各付各的，部署者不承担他人费用。
+- **想本地预览？** 在项目目录运行 `python server.py`，打开 `http://127.0.0.1:8000`。
 
-## 本地开发（不上线时）
+---
 
-```bash
-cd exam-ai-tutor
-python server.py     # 打开 http://127.0.0.1:8000
-```
+## 其他部署方式（可选）
+
+纯静态网站也可以放在任何静态托管上：
+- Cloudflare Pages
+- Vercel（纯静态，直接导入 `static` 目录）
+- GitHub Pages（需 GitHub 能访问）
+
+核心都一样：**把 `static` 目录作为网站根目录发布**即可。

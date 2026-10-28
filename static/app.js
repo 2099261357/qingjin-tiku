@@ -1,10 +1,13 @@
 /* 青衿题库 · 前端交互
  * BYOK：用户在浏览器填写自己的 API Key（存 localStorage），
- * 前端把 Key 放在 Authorization 头里请求后端 /api/chat 代理。
+ * 前端把 Key 放在 Authorization 头里，直接请求模型提供商（BYOK 浏览器直连）。
  * 未设置 Key 时进入「演示模式」（不联网、不花钱）。
  */
 (function () {
   "use strict";
+
+  // ---------- 站点主人预配置（来自 config.js） ----------
+  var SITE = window.QJ_SITE_CONFIG || {};
 
   // ---------- 配置存取 ----------
   var LS = { key: "qj_key", base: "qj_base", model: "qj_model", style: "qj_style", vkey: "qj_vkey", vbase: "qj_vbase", vmodel: "qj_vmodel" };
@@ -29,6 +32,24 @@
     localStorage.setItem(LS.vkey, cfg.vkey);
     localStorage.setItem(LS.vbase, cfg.vbase);
     localStorage.setItem(LS.vmodel, cfg.vmodel);
+  }
+
+  // 站点试卷库（来自 static/papers.txt，所有用户共享）
+  var SITE_PAPERS = "";
+  function loadPapers() {
+    fetch("papers.txt").then(function (r) { return r.ok ? r.text() : ""; }).then(function (t) {
+      SITE_PAPERS = (t || "").split("\n").filter(function (line) { return !/^\s*#/.test(line); }).join("\n").trim();
+    }).catch(function () {});
+  }
+
+  // 风格参考 = 站点试卷库 + config.js 的 paperBank + 用户自己粘贴的 styleRef
+  function getStyleRef() {
+    var parts = [];
+    if (SITE_PAPERS) parts.push(SITE_PAPERS);
+    if (SITE.paperBank) parts.push(SITE.paperBank);
+    var s = getConfig().style;
+    if (s) parts.push(s);
+    return parts.join("\n\n");
   }
 
   // ---------- 工具 ----------
@@ -174,16 +195,18 @@
   // ---------- 调用模型 ----------
   async function callModel(messages, kind) {
     var cfg = getConfig();
-    if (!cfg.key) {
+    var key = SITE.textKey || cfg.key;
+    if (!key) {
       return { demo: true, content: buildDemo(kind, messages) };
     }
-    var body = { model: cfg.model, messages: messages, temperature: 0.3, stream: false };
-    var res = await fetch("/api/chat", {
+    var model = SITE.textModel || cfg.model;
+    var body = { model: model, messages: messages, temperature: 0.3, stream: false };
+    var endpoint = (SITE.textBaseUrl || cfg.base || "https://api.deepseek.com").replace(/\/+$/, "") + "/chat/completions";
+    var res = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": "Bearer " + cfg.key,
-        "X-Api-Base-Url": cfg.base,
+        "Authorization": "Bearer " + key,
       },
       body: JSON.stringify(body),
     });
@@ -211,6 +234,7 @@
       output.innerHTML = renderMarkdown(r.content);
       typeset(output);
       if (copyBtn) copyBtn.disabled = false;
+      askMessages = opts.messages.concat([{ role: "assistant", content: r.content }]);
       if (r.demo) toast(opts.demoNote || "演示模式：未设置 API Key，以下为示例输出");
     } catch (e) {
       output.innerHTML = '<p class="placeholder">出错了：' + escapeHtml(e.message || String(e)) + "</p>";
@@ -218,6 +242,73 @@
     } finally {
       btn.disabled = false;
       btn.textContent = original;
+    }
+  }
+
+  // ---------- 继续追问 ----------
+  var askMessages = [];
+  var askBusy = false;
+
+  function openAsk() {
+    if (!askMessages.length) { toast("先让 AI 解答一道题，再来追问", true); return; }
+    renderAskHistory();
+    $("askModal").classList.add("show");
+    setTimeout(function () { $("askInput").focus(); }, 50);
+  }
+
+  function closeAsk() {
+    $("askModal").classList.remove("show");
+  }
+
+  function renderAskHistory() {
+    var box = $("askHistory");
+    if (!box) return;
+    var html = "";
+    var firstAssistant = true;
+    for (var i = 0; i < askMessages.length; i++) {
+      var m = askMessages[i];
+      if (m.role === "system") continue;
+      if (m.role === "user" && i === 1) continue; // 跳过首轮的完整提示词
+      if (m.role === "assistant" && firstAssistant) {
+        firstAssistant = false;
+        html += '<div class="ask-label">上一轮解答</div>';
+      }
+      if (m.role === "user") {
+        html += '<div class="ask-msg user"><div class="ask-bubble">' + escapeHtml(m.content) + "</div></div>";
+      } else {
+        html += '<div class="ask-msg ai"><div class="ask-bubble">' + renderMarkdown(m.content) + "</div></div>";
+      }
+    }
+    box.innerHTML = html;
+    typeset(box);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendAsk() {
+    var input = $("askInput");
+    var text = input.value.trim();
+    if (!text || askBusy) return;
+    if (!askMessages.length) { toast("先让 AI 解答一道题，再来追问", true); return; }
+    askMessages.push({ role: "user", content: text });
+    input.value = "";
+    askBusy = true;
+    $("askSend").disabled = true;
+    renderAskHistory();
+    var box = $("askHistory");
+    box.innerHTML += '<div class="ask-msg ai"><div class="ask-bubble" id="askThinking">思考中…</div></div>';
+    box.scrollTop = box.scrollHeight;
+    try {
+      var r = await callModel(askMessages, "solve");
+      askMessages.push({ role: "assistant", content: r.content });
+      renderAskHistory();
+    } catch (e) {
+      askMessages.pop();
+      input.value = text;
+      renderAskHistory();
+      toast(e.message || "追问失败", true);
+    } finally {
+      askBusy = false;
+      $("askSend").disabled = false;
     }
   }
 
@@ -264,7 +355,7 @@
         list.innerHTML = entries.map(renderMsg).join("");
         typeset(list);
       })
-      .catch(function () { list.innerHTML = '<p class="placeholder">加载失败，请点击「刷新」。</p>'; });
+      .catch(function () { list.innerHTML = '<p class="placeholder">留言功能需要后端支持；纯静态部署时暂时不可用。</p>'; });
   }
 
   // ---------- 拍照识别 ----------
@@ -283,7 +374,7 @@
       reader.onload = function () {
         var img = new Image();
         img.onload = function () {
-          var MAX = 1600, w = img.width, h = img.height;
+          var MAX = 1024, w = img.width, h = img.height;
           if (Math.max(w, h) > MAX) {
             var s = MAX / Math.max(w, h);
             w = Math.round(w * s); h = Math.round(h * s);
@@ -291,7 +382,7 @@
           var canvas = document.createElement("canvas");
           canvas.width = w; canvas.height = h;
           canvas.getContext("2d").drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.85));
+          resolve(canvas.toDataURL("image/jpeg", 0.72));
         };
         img.onerror = reject;
         img.src = reader.result;
@@ -315,11 +406,11 @@
   async function recognizeImage() {
     if (!currentImageDataUrl) { toast("请先上传/粘贴题目图片", true); return null; }
     var cfg = getConfig();
-    var vModel = (cfg.vmodel || "").trim();
-    if (!vModel) { toast("请先在「使用说明」配置视觉模型（如 qwen-vl-plus / glm-4v）", true); return null; }
-    var vKey = (cfg.vkey || "").trim() || cfg.key;
-    var vBase = (cfg.vbase || "").trim() || cfg.base;
-    if (!vKey) { toast("请先设置 API Key", true); return null; }
+    var vModel = (SITE.visionModel || cfg.vmodel || "").trim();
+    if (!vModel) { toast("拍照识别未配置视觉模型", true); return null; }
+    var vKey = SITE.visionKey || cfg.key;
+    var vBase = SITE.visionBaseUrl || (cfg.vbase || "").trim() || cfg.base;
+    if (!vKey) { toast("拍照识别未配置 API Key", true); return null; }
 
     var messages = [{
       role: "user",
@@ -329,17 +420,41 @@
       ],
     }];
 
-    var res = await fetch("/api/chat", {
+    var vEndpoint = (vBase || "https://api.deepseek.com").replace(/\/+$/, "") + "/chat/completions";
+    var res = await fetch(vEndpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + vKey, "X-Api-Base-Url": vBase },
-      body: JSON.stringify({ model: vModel, messages: messages, temperature: 0.1, stream: false }),
+      headers: { "Content-Type": "application/json", "Authorization": "Bearer " + vKey },
+      body: JSON.stringify({ model: vModel, messages: messages, temperature: 0.1, stream: false, max_tokens: 4096 }),
     });
     var data = null;
     try { data = await res.json(); } catch (e) { /* ignore */ }
     if (!res.ok) throw new Error((data && data.error && data.error.message) || ("识别失败（HTTP " + res.status + "）"));
-    var text = (data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "";
-    if (!text) throw new Error("视觉模型未返回内容");
+    var choice = data && data.choices && data.choices[0];
+    var vmsg = (choice && choice.message) || {};
+    var text = vmsg.content || vmsg.reasoning_content || "";
+    if (!text) {
+      throw new Error("未返回内容（finish_reason=" + (choice && choice.finish_reason) + "）原始响应：" + JSON.stringify(data).slice(0, 500));
+    }
     return text.trim();
+  }
+
+  // ---------- 识别结果公式预览 ----------
+  function renderOcrPreview() {
+    var el = $("ocrPreview");
+    if (!el) return;
+    var src = $("ocrText").value.trim();
+    if (!src) {
+      el.innerHTML = '<p class="placeholder">识别结果会在这里以公式形式预览</p>';
+      return;
+    }
+    el.innerHTML = escapeHtml(src).replace(/\n/g, "<br>");
+    typeset(el);
+  }
+
+  function showOcrError(msg) {
+    var pv = $("ocrPreview");
+    if (pv) pv.innerHTML = '<p class="placeholder" style="color:#b42318;font-weight:600">识别失败：' + escapeHtml(msg) + "</p>";
+    toast(msg, true);
   }
 
   // ---------- 事件绑定 ----------
@@ -373,7 +488,7 @@
     $("solveBtn").addEventListener("click", function () {
       var q = $("solveQuestion").value.trim();
       if (!q) { toast("请先输入题目", true); return; }
-      var msg = PROMPTS.solve(activeValue("solveSubject"), q, getConfig().style);
+      var msg = PROMPTS.solve(activeValue("solveSubject"), q, getStyleRef());
       runAction({
         btn: $("solveBtn"), output: $("solveOutput"), copy: $("copySolve"), kind: "solve",
         messages: [{ role: "system", content: msg.system }, { role: "user", content: msg.user }],
@@ -386,7 +501,7 @@
       var q = $("variantQuestion").value.trim();
       if (!q) { toast("请先输入原题", true); return; }
       var n = parseInt($("variantCount").value, 10) || 3;
-      var msg = PROMPTS.variant(activeValue("variantSubject"), q, $("variantSolution").value, n, getConfig().style);
+      var msg = PROMPTS.variant(activeValue("variantSubject"), q, $("variantSolution").value, n, getStyleRef());
       runAction({
         btn: $("variantBtn"), output: $("variantOutput"), copy: $("copyVariant"), kind: "variant",
         messages: [{ role: "system", content: msg.system }, { role: "user", content: msg.user }],
@@ -410,7 +525,7 @@
         topics: $("examTopics").value,
         withAnswers: $("examAnswers").checked,
       };
-      var msg = PROMPTS.exam(activeValue("examSubject"), cfg, getConfig().style);
+      var msg = PROMPTS.exam(activeValue("examSubject"), cfg, getStyleRef());
       runAction({
         btn: $("examBtn"), output: $("examOutput"), copy: $("copyExam"), kind: "exam",
         messages: [{ role: "system", content: msg.system }, { role: "user", content: msg.user }],
@@ -422,7 +537,7 @@
     $("deepBtn").addEventListener("click", function () {
       var q = $("deepQuestion").value.trim();
       if (!q) { toast("请先输入题目或知识点", true); return; }
-      var msg = PROMPTS.deepThink(activeValue("deepSubject"), q, getConfig().style);
+      var msg = PROMPTS.deepThink(activeValue("deepSubject"), q, getStyleRef());
       runAction({
         btn: $("deepBtn"), output: $("deepOutput"), copy: $("copyDeep"), kind: "deep",
         messages: [{ role: "system", content: msg.system }, { role: "user", content: msg.user }],
@@ -459,6 +574,11 @@
       $("uploadZone").querySelector(".upload-inner").style.display = "";
     });
 
+    $("ocrText").addEventListener("input", function () {
+      clearTimeout($("ocrText")._t);
+      $("ocrText")._t = setTimeout(renderOcrPreview, 400);
+    });
+
     $("ocrBtn").addEventListener("click", async function () {
       if (!currentImageDataUrl) { toast("请先上传/粘贴题目图片", true); return; }
       var orig = this.textContent;
@@ -466,8 +586,8 @@
       this.innerHTML = '<span class="spinner"></span>识别中…';
       try {
         var text = await recognizeImage();
-        if (text) { $("ocrText").value = text; toast("识别完成，可修改后解答"); }
-      } catch (e) { toast(e.message || "识别失败", true); }
+        if (text) { $("ocrText").value = text; renderOcrPreview(); toast("识别完成，可修改后解答"); }
+      } catch (e) { showOcrError(e.message || "识别失败"); }
       finally { this.disabled = false; this.textContent = orig; }
     });
 
@@ -480,12 +600,12 @@
         this.innerHTML = '<span class="spinner"></span>识别中…';
         try {
           var t = await recognizeImage();
-          if (t) { $("ocrText").value = t; q = t; }
-        } catch (e) { toast(e.message || "识别失败", true); }
+          if (t) { $("ocrText").value = t; q = t; renderOcrPreview(); }
+        } catch (e) { showOcrError(e.message || "识别失败"); }
         finally { this.disabled = false; this.textContent = orig; }
       }
       if (!q) { toast("未识别到题目，请上传图片或手动输入", true); return; }
-      var msg = PROMPTS.solve(activeValue("ocrSubject"), q, getConfig().style);
+      var msg = PROMPTS.solve(activeValue("ocrSubject"), q, getStyleRef());
       runAction({
         btn: $("ocrSolveBtn"), output: $("ocrOutput"), copy: $("copyOcr"), kind: "solve",
         messages: [{ role: "system", content: msg.system }, { role: "user", content: msg.user }],
@@ -561,8 +681,28 @@
     });
     $("fbRefresh").addEventListener("click", loadFeedback);
 
+    // 继续追问：给每个解答区加「追问」按钮
+    document.querySelectorAll(".output-head").forEach(function (head) {
+      var copy = head.querySelector("button");
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "btn ghost sm ask-trigger";
+      b.textContent = "追问";
+      b.addEventListener("click", openAsk);
+      if (copy) head.insertBefore(b, copy); else head.appendChild(b);
+    });
+    $("askClose").addEventListener("click", closeAsk);
+    $("askSend").addEventListener("click", sendAsk);
+    $("askInput").addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendAsk(); }
+    });
+    $("askModal").addEventListener("click", function (e) {
+      if (e.target === $("askModal")) closeAsk();
+    });
+
     // 初始载入配置
     loadSettings();
+    loadPapers();
     loadFeedback();
   }
 
@@ -572,20 +712,27 @@
     $("apiBase").value = cfg.base;
     $("apiModel").value = cfg.model;
     $("styleRef").value = cfg.style;
-    $("vKey").value = cfg.vkey;
-    $("vBase").value = cfg.vbase;
-    $("vModel").value = cfg.vmodel;
+    // 视觉识别：优先用站点预配置
+    $("vBase").value = SITE.visionBaseUrl || cfg.vbase;
+    $("vModel").value = SITE.visionModel || cfg.vmodel;
+    $("vKey").value = "";
+    // 已预配置的项，对普通用户隐藏
+    var visionSection = $("visionConfigSection");
+    if (visionSection && SITE.visionModel) visionSection.style.display = "none";
+    var textKeySection = $("textKeySection");
+    if (textKeySection && SITE.textKey) textKeySection.style.display = "none";
     updateKeyStatus();
   }
 
   function updateKeyStatus() {
-    var has = !!getConfig().key;
+    var siteText = !!(SITE.textKey);
+    var has = siteText || !!getConfig().key;
     var st = $("keyStatus");
     st.classList.toggle("on", has);
-    st.querySelector(".key-status-text").textContent = has ? "已设置 Key" : "未设置 Key";
-    $("keyHint").textContent = has
-      ? "已设置 Key，保存后立即生效；AI 调用费用由该账户自行承担。"
-      : "尚未设置 Key，当前为「演示模式」（不联网、不花钱）。";
+    st.querySelector(".key-status-text").textContent = siteText ? "已预配置" : (has ? "已设置 Key" : "未设置 Key");
+    $("keyHint").textContent = siteText
+      ? "本站已预配置模型，无需填写，直接使用即可。"
+      : (has ? "已设置 Key，保存后立即生效；AI 调用费用由该账户自行承担。" : "尚未设置 Key，当前为「演示模式」（不联网、不花钱）。");
   }
 
   if (document.readyState === "loading") {

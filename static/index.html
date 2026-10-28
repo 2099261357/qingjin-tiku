@@ -66,7 +66,7 @@
     <section id="panel-ocr" class="panel active" role="tabpanel">
       <div class="panel-head">
         <h3>拍照识别</h3>
-        <p class="panel-desc">拍照或上传题目图片，先用视觉模型识别文字，再解答。</p>
+        <p class="panel-desc">拍照或上传题目图片，用 DeepSeek 识别文字后解答。</p>
       </div>
       <div class="work-grid">
         <div class="card">
@@ -93,9 +93,10 @@
 
           <label class="field-label" for="ocrText">识别结果（可修改）</label>
           <textarea id="ocrText" rows="5" placeholder="识别出的题目文字会显示在这里，可手动修正……"></textarea>
+          <div class="ocr-preview" id="ocrPreview"><p class="placeholder">识别结果会在这里以公式形式预览</p></div>
 
           <button class="btn primary" id="ocrSolveBtn">识别并解答</button>
-          <p class="field-hint">需先在「使用说明」配置视觉模型（DeepSeek 标准 API 不支持图片）。</p>
+          <p class="field-hint">拍照识别用 DeepSeek 的 deepseek-flash 模型，填了 API Key 即可，无需额外配置。</p>
         </div>
         <div class="card output-card">
           <div class="output-head">
@@ -311,12 +312,14 @@
         <div class="card config-card">
           <h4 class="guide-title">你的配置</h4>
 
-          <label class="field-label" for="apiKey">API Key</label>
-          <div class="key-row">
-            <input type="password" id="apiKey" placeholder="sk-…（粘贴你的密钥）" autocomplete="off" />
-            <button class="btn ghost sm" id="toggleKey" type="button">显示</button>
+          <div id="textKeySection">
+            <label class="field-label" for="apiKey">API Key</label>
+            <div class="key-row">
+              <input type="password" id="apiKey" placeholder="sk-…（粘贴你的密钥）" autocomplete="off" />
+              <button class="btn ghost sm" id="toggleKey" type="button">显示</button>
+            </div>
+            <p class="field-hint" id="keyHint">尚未设置 Key，当前为「演示模式」（不联网、不花钱）。</p>
           </div>
-          <p class="field-hint" id="keyHint">尚未设置 Key，当前为「演示模式」（不联网、不花钱）。</p>
 
           <div class="row-2">
             <div>
@@ -332,27 +335,27 @@
             </div>
           </div>
 
-          <h4 class="guide-title" style="margin-top:24px;">视觉识别（拍照用，可选）</h4>
-          <p class="field-hint">DeepSeek 标准 API 不支持图片；拍照识别需要一个「视觉模型」。推荐用<b>免费的 glm-4v-flash</b>（智谱）：地址 <code>https://open.bigmodel.cn/api/paas/v4</code>，Key 填智谱的 key。</p>
+          <div id="visionConfigSection">
+            <h4 class="guide-title" style="margin-top:24px;">视觉识别（拍照用，可选）</h4>
+            <p class="field-hint">拍照识别使用 DeepSeek 的 <code>deepseek-flash</code> 模型，复用上面的 API Key，无需单独配置。</p>
 
-          <label class="field-label" for="vKey">视觉 API Key（留空则复用上方 Key）</label>
-          <input type="password" id="vKey" placeholder="sk-…（Qwen / GLM 的 key）" autocomplete="off" />
+            <label class="field-label" for="vKey">视觉 API Key（留空则复用上方 Key）</label>
+            <input type="password" id="vKey" placeholder="sk-…（硅基流动的 key）" autocomplete="off" />
 
-          <div class="row-2">
-            <div>
-              <label class="field-label" for="vBase">视觉接口地址（留空则复用上方）</label>
-              <input type="text" id="vBase" placeholder="https://open.bigmodel.cn/api/paas/v4" />
-            </div>
-            <div>
-              <label class="field-label" for="vModel">视觉模型</label>
-              <input type="text" id="vModel" placeholder="glm-4v-flash（免费）" list="vModelList" />
-              <datalist id="vModelList">
-                <option value="glm-4v-flash"></option>
-                <option value="glm-4v"></option>
-                <option value="glm-4v-plus"></option>
-                <option value="qwen-vl-plus"></option>
-                <option value="qwen3-vl-plus"></option>
-              </datalist>
+            <div class="row-2">
+              <div>
+                <label class="field-label" for="vBase">视觉接口地址（留空则复用上方）</label>
+                <input type="text" id="vBase" placeholder="https://api.siliconflow.cn/v1" />
+              </div>
+              <div>
+                <label class="field-label" for="vModel">视觉模型</label>
+                <input type="text" id="vModel" placeholder="Qwen/Qwen2.5-VL-7B-Instruct" list="vModelList" />
+                <datalist id="vModelList">
+                  <option value="Qwen/Qwen2.5-VL-7B-Instruct"></option>
+                  <option value="Qwen/Qwen2.5-VL-32B-Instruct"></option>
+                  <option value="PaddlePaddle/PaddleOCR-VL"></option>
+                </datalist>
+              </div>
             </div>
           </div>
 
@@ -376,6 +379,22 @@
 
   <div class="toast" id="toast" role="status"></div>
 
+  <!-- 继续追问弹窗 -->
+  <div class="modal-mask" id="askModal" role="dialog" aria-modal="true">
+    <div class="modal">
+      <div class="modal-head">
+        <h4>继续追问</h4>
+        <button class="btn ghost sm" id="askClose" type="button">关闭</button>
+      </div>
+      <div class="ask-history" id="askHistory"></div>
+      <div class="ask-input-row">
+        <textarea id="askInput" rows="2" placeholder="还有哪里不懂？继续问老师……（Enter 发送）"></textarea>
+        <button class="btn primary" id="askSend" type="button">发送</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
   <script src="prompts.js"></script>
   <script src="app.js"></script>
 </body>
