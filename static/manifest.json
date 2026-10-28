@@ -1,0 +1,16 @@
+{
+  "name": "青衿题库 · 高数大物 AI 伴学",
+  "short_name": "青衿题库",
+  "description": "拍照识别、解题、举一反三、出模拟卷、继续追问的 AI 学习助手",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6f4ee",
+  "theme_color": "#4f46e5",
+  "lang": "zh-CN",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

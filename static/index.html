@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>青衿题库 · 高数 / 大物 AI 伴学</title>
   <meta name="description" content="输入一道高等数学或大学物理题，AI 给出分步解答，再生成同类变式题与风格相近的模拟卷。用户自备 DeepSeek API Key。" />
+  <!-- PWA：可安装到手机桌面 -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4f46e5" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="青衿题库" />
   <link rel="stylesheet" href="style.css" />
   <!-- 数学公式渲染（离线时自动降级为原始 LaTeX 文本） -->
   <script>
@@ -397,5 +404,13 @@
   <script src="config.js"></script>
   <script src="prompts.js"></script>
   <script src="app.js"></script>
+  <script>
+    // 注册 Service Worker（PWA：可安装到桌面 + 离线缓存）
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", function () {
+        navigator.serviceWorker.register("service-worker.js").catch(function () {});
+      });
+    }
+  </script>
 </body>
 </html>
