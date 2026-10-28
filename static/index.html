@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>青衿题库 · 高数 / 大物 AI 伴学</title>
+  <meta name="description" content="输入一道高等数学或大学物理题，AI 给出分步解答，再生成同类变式题与风格相近的模拟卷。用户自备 DeepSeek API Key。" />
+  <link rel="stylesheet" href="style.css" />
+  <!-- 数学公式渲染（离线时自动降级为原始 LaTeX 文本） -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [["$", "$"], ["\\(", "\\)"]], displayMath: [["$$", "$$"], ["\\[", "\\]"]] },
+      options: { skipHtmlTags: ["script", "noscript", "style", "textarea", "pre", "code"] },
+      startup: { typeset: false },
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" async></script>
+</head>
+<body>
+  <!-- 背景装饰 -->
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <!-- 顶栏 -->
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">青</span>
+      <div class="brand-text">
+        <span class="brand-name">青衿题库</span>
+        <span class="brand-sub">高数 · 大物 · AI 伴学</span>
+      </div>
+    </div>
+
+    <nav class="tabs" id="tabs" role="tablist">
+      <button class="tab active" data-tab="ocr" role="tab">拍照识别</button>
+      <button class="tab" data-tab="solve" role="tab">解题</button>
+      <button class="tab" data-tab="variant" role="tab">举一反三</button>
+      <button class="tab" data-tab="deep" role="tab">深度思考</button>
+      <button class="tab" data-tab="exam" role="tab">出模拟卷</button>
+      <button class="tab" data-tab="feedback" role="tab">留言反馈</button>
+      <button class="tab" data-tab="guide" role="tab">使用说明</button>
+    </nav>
+
+    <div class="key-status" id="keyStatus" title="API Key 状态">
+      <span class="dot"></span><span class="key-status-text">未设置 Key</span>
+    </div>
+  </header>
+
+  <!-- 声明横幅 -->
+  <div class="notice" role="note">
+    <div class="notice-icon" aria-hidden="true">⚠</div>
+    <div class="notice-body">
+      <strong>声明</strong>
+      <p>本工具本身不提供 AI 服务，也不储存任何大模型密钥。所有解题、举一反三与模拟卷，均由「你本人填写的第三方 API Key」调用大模型生成，由此产生的调用费用由该 Key 所属账户自行承担。请自行申请并妥善保管你的 Key。</p>
+    </div>
+  </div>
+
+  <main class="container">
+    <!-- Hero -->
+    <section class="hero">
+      <p class="hero-eyebrow">让每一道题，都成为一类题的解法</p>
+      <h2 class="hero-title">不会就解一道，<span class="accent">举一反三</span>学透它</h2>
+      <p class="hero-desc">输入一道高等数学或大学物理题，AI 给出分步解答；再生成同类变式题，以及风格与往年真题相近的完整模拟卷。</p>
+    </section>
+
+    <!-- ============ 拍照识别 ============ -->
+    <section id="panel-ocr" class="panel active" role="tabpanel">
+      <div class="panel-head">
+        <h3>拍照识别</h3>
+        <p class="panel-desc">拍照或上传题目图片，先用视觉模型识别文字，再解答。</p>
+      </div>
+      <div class="work-grid">
+        <div class="card">
+          <label class="field-label">科目</label>
+          <div class="chips" id="ocrSubject">
+            <button class="chip active" data-subject="高等数学">高等数学</button>
+            <button class="chip" data-subject="大学物理">大学物理</button>
+            <button class="chip" data-subject="通用">通用</button>
+          </div>
+
+          <div class="upload-zone" id="uploadZone" tabindex="0" role="button" aria-label="上传题目图片">
+            <input type="file" id="fileInput" accept="image/*" capture="environment" hidden />
+            <div class="upload-inner">
+              <div class="upload-icon" aria-hidden="true">📷</div>
+              <p class="upload-hint"><strong>点击上传 / 拍照</strong>，或直接粘贴、拖拽图片到这里</p>
+            </div>
+          </div>
+          <div class="preview-wrap" id="previewWrap" hidden>
+            <img id="previewImg" alt="题目预览" />
+            <button class="btn ghost sm" id="clearImg" type="button">移除</button>
+          </div>
+
+          <button class="btn primary" id="ocrBtn">识别题目文字</button>
+
+          <label class="field-label" for="ocrText">识别结果（可修改）</label>
+          <textarea id="ocrText" rows="5" placeholder="识别出的题目文字会显示在这里，可手动修正……"></textarea>
+
+          <button class="btn primary" id="ocrSolveBtn">识别并解答</button>
+          <p class="field-hint">需先在「使用说明」配置视觉模型（DeepSeek 标准 API 不支持图片）。</p>
+        </div>
+        <div class="card output-card">
+          <div class="output-head">
+            <span>解答</span>
+            <button class="btn ghost sm" id="copyOcr" disabled>复制</button>
+          </div>
+          <div class="output" id="ocrOutput"><p class="placeholder">先上传图片并识别，再点击「识别并解答」。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 解题 ============ -->
+    <section id="panel-solve" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h3>解题</h3>
+        <p class="panel-desc">粘贴或输入题目，AI 给出分步解答。</p>
+      </div>
+      <div class="work-grid">
+        <div class="card">
+          <label class="field-label">科目</label>
+          <div class="chips" id="solveSubject">
+            <button class="chip active" data-subject="高等数学">高等数学</button>
+            <button class="chip" data-subject="大学物理">大学物理</button>
+            <button class="chip" data-subject="通用">通用</button>
+          </div>
+          <label class="field-label" for="solveQuestion">题目</label>
+          <textarea id="solveQuestion" rows="7" placeholder="例如：求极限 lim(x→0) (sin x)/x，并说明理由……"></textarea>
+          <button class="btn primary" id="solveBtn">开始解答</button>
+        </div>
+        <div class="card output-card">
+          <div class="output-head">
+            <span>解答</span>
+            <button class="btn ghost sm" id="copySolve" disabled>复制</button>
+          </div>
+          <div class="output" id="solveOutput"><p class="placeholder">解答结果将显示在这里。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 举一反三 ============ -->
+    <section id="panel-variant" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h3>举一反三</h3>
+        <p class="panel-desc">给一道原题，生成风格与难度相近的变式题（含解答）。</p>
+      </div>
+      <div class="work-grid">
+        <div class="card">
+          <label class="field-label">科目</label>
+          <div class="chips" id="variantSubject">
+            <button class="chip active" data-subject="高等数学">高等数学</button>
+            <button class="chip" data-subject="大学物理">大学物理</button>
+            <button class="chip" data-subject="通用">通用</button>
+          </div>
+          <label class="field-label" for="variantQuestion">原题</label>
+          <textarea id="variantQuestion" rows="5" placeholder="例如：求 ∫x·e^x dx 的不定积分……"></textarea>
+          <label class="field-label" for="variantSolution">原题解答（可选，留空则由 AI 先自行解答）</label>
+          <textarea id="variantSolution" rows="4" placeholder="可粘贴原题答案，帮助 AI 对齐思路"></textarea>
+          <label class="field-label" for="variantCount">生成数量：<b id="variantCountVal">3</b> 道</label>
+          <input type="range" id="variantCount" min="1" max="6" step="1" value="3" />
+          <button class="btn primary" id="variantBtn">生成变式题</button>
+        </div>
+        <div class="card output-card">
+          <div class="output-head">
+            <span>变式题</span>
+            <button class="btn ghost sm" id="copyVariant" disabled>复制</button>
+          </div>
+          <div class="output" id="variantOutput"><p class="placeholder">变式题将显示在这里。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 深度思考 ============ -->
+    <section id="panel-deep" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h3>深度思考</h3>
+        <p class="panel-desc">不止于答案——讲透概念本质、多角度审视、并主动做创新拓展。</p>
+      </div>
+      <div class="work-grid">
+        <div class="card">
+          <label class="field-label">科目</label>
+          <div class="chips" id="deepSubject">
+            <button class="chip active" data-subject="高等数学">高等数学</button>
+            <button class="chip" data-subject="大学物理">大学物理</button>
+            <button class="chip" data-subject="通用">通用</button>
+          </div>
+          <label class="field-label" for="deepQuestion">题目 / 知识点</label>
+          <textarea id="deepQuestion" rows="6" placeholder="例如：为什么洛必达法则在 0/0 型极限里成立？它的几何直观是什么？……"></textarea>
+          <button class="btn primary" id="deepBtn">开始深度思考</button>
+        </div>
+        <div class="card output-card">
+          <div class="output-head">
+            <span>深度思考</span>
+            <button class="btn ghost sm" id="copyDeep" disabled>复制</button>
+          </div>
+          <div class="output" id="deepOutput"><p class="placeholder">深度思考结果将显示在这里。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 出模拟卷 ============ -->
+    <section id="panel-exam" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h3>出模拟卷</h3>
+        <p class="panel-desc">生成一份风格与往年真题相近的完整模拟试卷。</p>
+      </div>
+      <div class="work-grid">
+        <div class="card">
+          <label class="field-label">科目</label>
+          <div class="chips" id="examSubject">
+            <button class="chip active" data-subject="高等数学">高等数学</button>
+            <button class="chip" data-subject="大学物理">大学物理</button>
+          </div>
+
+          <div class="row-2">
+            <div>
+              <label class="field-label" for="examTotal">总分</label>
+              <input type="number" id="examTotal" value="100" min="10" max="200" step="5" />
+            </div>
+            <div>
+              <label class="field-label">难度</label>
+              <div class="chips" id="examLevel">
+                <button class="chip" data-level="基础">基础</button>
+                <button class="chip active" data-level="适中">适中</button>
+                <button class="chip" data-level="偏难">偏难</button>
+              </div>
+            </div>
+          </div>
+
+          <label class="field-label">题型与数量</label>
+          <div class="type-grid" id="examTypes">
+            <div class="type-item"><span>选择题</span><input type="number" value="5" min="0" max="20" data-name="选择题" /></div>
+            <div class="type-item"><span>填空题</span><input type="number" value="5" min="0" max="20" data-name="填空题" /></div>
+            <div class="type-item"><span>计算题</span><input type="number" value="4" min="0" max="20" data-name="计算题" /></div>
+            <div class="type-item"><span>证明题</span><input type="number" value="1" min="0" max="20" data-name="证明题" /></div>
+            <div class="type-item"><span>简答题</span><input type="number" value="0" min="0" max="20" data-name="简答题" /></div>
+          </div>
+
+          <label class="field-label" for="examTopics">覆盖知识点（可选）</label>
+          <textarea id="examTopics" rows="2" placeholder="例如：极限与连续、导数、定积分、多元函数……"></textarea>
+
+          <label class="check-row">
+            <input type="checkbox" id="examAnswers" checked />
+            <span>附详细解答与参考答案</span>
+          </label>
+
+          <button class="btn primary" id="examBtn">生成试卷</button>
+        </div>
+        <div class="card output-card">
+          <div class="output-head">
+            <span>模拟卷</span>
+            <button class="btn ghost sm" id="copyExam" disabled>复制</button>
+          </div>
+          <div class="output" id="examOutput"><p class="placeholder">生成的模拟卷将显示在这里。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 留言反馈 ============ -->
+    <section id="panel-feedback" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h3>留言反馈</h3>
+        <p class="panel-desc">有任何建议、报错，或想补充的科目，都可以写在这里。</p>
+      </div>
+      <div class="work-grid">
+        <div class="card">
+          <label class="field-label" for="fbNick">昵称（可选）</label>
+          <input type="text" id="fbNick" placeholder="匿名" maxlength="50" />
+          <label class="field-label" for="fbContent">留言内容</label>
+          <textarea id="fbContent" rows="6" placeholder="例如：希望增加「线性代数」科目；某道题的解答有误……"></textarea>
+          <button class="btn primary" id="fbSubmit">提交留言</button>
+          <p class="field-hint">留言会公开显示在右侧，请勿填写隐私信息。</p>
+        </div>
+        <div class="card output-card">
+          <div class="output-head">
+            <span>最新留言</span>
+            <button class="btn ghost sm" id="fbRefresh">刷新</button>
+          </div>
+          <div class="output" id="fbList"><p class="placeholder">暂无留言。</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 使用说明 ============ -->
+    <section id="panel-guide" class="panel" role="tabpanel">
+      <div class="panel-head">
+        <h3>使用说明</h3>
+        <p class="panel-desc">用户自备 API Key：如何申请、充值、填写，以及隐私说明。</p>
+      </div>
+
+      <div class="guide-grid">
+        <!-- 左侧：教程 -->
+        <div class="card guide-card">
+          <h4 class="guide-title">① 如何获取 API Key（含充值步骤）</h4>
+          <ol class="steps">
+            <li><strong>注册</strong>：打开 <a href="https://platform.deepseek.com" target="_blank" rel="noopener">DeepSeek 开放平台</a>，用手机号或微信注册 / 登录。</li>
+            <li><strong>充值</strong>：进入「充值」页面，选择金额完成支付。按量计费，<em>先充 10 元即可使用很久</em>。</li>
+            <li><strong>创建 Key</strong>：进入「API Keys」→「创建 API Key」，起个名字，复制生成的一串 <code>sk-…</code>。</li>
+            <li><strong>填入本页</strong>：把 <code>sk-…</code> 粘贴到右侧「你的配置」的 API Key 输入框，点击「保存」。</li>
+            <li><strong>选择模型</strong>：默认 <code>deepseek-chat</code>（快、便宜）；难题可切换 <code>deepseek-reasoner</code>（推理更强、更慢更贵）。</li>
+          </ol>
+
+          <h4 class="guide-title">② 风格参考（让变式题/试卷更贴学校风格）</h4>
+          <p class="guide-note">在右侧「风格参考」里粘贴几道你们学校的往年真题，生成变式题和模拟卷时 AI 会模仿其风格与难度，但不会照抄原题。</p>
+
+          <h4 class="guide-title">③ 隐私与安全</h4>
+          <ul class="bullets">
+            <li>你的 API Key <strong>只保存在你自己的浏览器</strong>（localStorage）里，不会上传到本网站服务器；本网站仅转发请求、不记录 Key。</li>
+            <li>请勿把 Key 分享给他人；若泄露，请到平台「API Keys」删除并重建。</li>
+          </ul>
+        </div>
+
+        <!-- 右侧：配置 -->
+        <div class="card config-card">
+          <h4 class="guide-title">你的配置</h4>
+
+          <label class="field-label" for="apiKey">API Key</label>
+          <div class="key-row">
+            <input type="password" id="apiKey" placeholder="sk-…（粘贴你的密钥）" autocomplete="off" />
+            <button class="btn ghost sm" id="toggleKey" type="button">显示</button>
+          </div>
+          <p class="field-hint" id="keyHint">尚未设置 Key，当前为「演示模式」（不联网、不花钱）。</p>
+
+          <div class="row-2">
+            <div>
+              <label class="field-label" for="apiBase">接口地址（Base URL）</label>
+              <input type="text" id="apiBase" value="https://api.deepseek.com" placeholder="https://api.deepseek.com" />
+            </div>
+            <div>
+              <label class="field-label" for="apiModel">模型</label>
+              <select id="apiModel">
+                <option value="deepseek-chat" selected>deepseek-chat（快·便宜）</option>
+                <option value="deepseek-reasoner">deepseek-reasoner（推理强·更贵）</option>
+              </select>
+            </div>
+          </div>
+
+          <h4 class="guide-title" style="margin-top:24px;">视觉识别（拍照用，可选）</h4>
+          <p class="field-hint">DeepSeek 标准 API 不支持图片；拍照识别需要一个「视觉模型」。推荐用<b>免费的 glm-4v-flash</b>（智谱）：地址 <code>https://open.bigmodel.cn/api/paas/v4</code>，Key 填智谱的 key。</p>
+
+          <label class="field-label" for="vKey">视觉 API Key（留空则复用上方 Key）</label>
+          <input type="password" id="vKey" placeholder="sk-…（Qwen / GLM 的 key）" autocomplete="off" />
+
+          <div class="row-2">
+            <div>
+              <label class="field-label" for="vBase">视觉接口地址（留空则复用上方）</label>
+              <input type="text" id="vBase" placeholder="https://open.bigmodel.cn/api/paas/v4" />
+            </div>
+            <div>
+              <label class="field-label" for="vModel">视觉模型</label>
+              <input type="text" id="vModel" placeholder="glm-4v-flash（免费）" list="vModelList" />
+              <datalist id="vModelList">
+                <option value="glm-4v-flash"></option>
+                <option value="glm-4v"></option>
+                <option value="glm-4v-plus"></option>
+                <option value="qwen-vl-plus"></option>
+                <option value="qwen3-vl-plus"></option>
+              </datalist>
+            </div>
+          </div>
+
+          <label class="field-label" for="styleRef">风格参考（可选，粘贴往年真题）</label>
+          <textarea id="styleRef" rows="6" placeholder="每行或每段一题，例如：&#10;1. 求极限 lim(x→0) (1-cos x)/x² ……&#10;2. 一质点沿直线运动，其位移 s=t³-3t²+2t，求……"></textarea>
+
+          <div class="btn-row">
+            <button class="btn primary" id="saveCfg">保存</button>
+            <button class="btn danger" id="clearCfg">清除 Key</button>
+          </div>
+          <p class="field-hint">保存后，页面顶部的状态会变为「已设置 Key」。</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p><strong>免责声明</strong>：本工具为学习辅助，AI 生成内容可能存在错误，重要科目与考试请务必人工核对；请勿将往年真题或受版权保护的材料公开传播。</p>
+    <p class="footer-meta">青衿题库 · 用户自备 API Key · <a href="https://github.com/" target="_blank" rel="noopener">GitHub</a></p>
+  </footer>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="prompts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
